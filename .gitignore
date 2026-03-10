@@ -1,0 +1,16 @@
+# Credenciais e ambiente — NUNCA suba esses arquivos!
+.env
+*.json.bak
+credentials_b64.txt
+service-account*.json
+
+# Vercel
+.vercel
+
+# Node
+node_modules/
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
