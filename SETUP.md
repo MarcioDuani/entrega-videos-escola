@@ -9,9 +9,9 @@
 
 ---
 
-## Passo 1 — Google Cloud: Criar Service Account
+## Passo 1 — Google Cloud: Criar Credenciais OAuth2
 
-> A Service Account é uma "conta robô" que faz o upload no Drive da professora.
+Essa plataforma utiliza o Google Drive da própria conta vinculada para contornar limites de cota de upload de Contas de Serviço (Service Accounts).
 
 1. Acesse [console.cloud.google.com](https://console.cloud.google.com)
 2. Crie um novo projeto (ex: **"Entregas Portuguesa"**)
@@ -19,35 +19,35 @@
 4. Ative estas 2 APIs:
    - **Google Drive API**
    - **Google Sheets API**
-5. Vá em **APIs e Serviços → Credenciais → Criar Credenciais → Conta de Serviço**
-6. Nome: `entrega-videos` → clique em **Criar**
-7. Na tela seguinte, clique na conta criada → aba **Chaves → Adicionar Chave → JSON**
-8. Salve o arquivo `.json` — você vai precisar dele
+5. No menu lateral → **Google Auth Platform** (ou Tela de Permissão OAuth)
+   - Configure o Público-alvo como "Externo"
+   - Preencha o nome do app e o e-mail de suporte.
+   - **MUITO IMPORTANTE:** Clique no botão **"Publicar Aplicativo"** (para o token não expirar em 7 dias).
+6. Vá em **APIs e Serviços → Credenciais → Criar Credenciais → ID do Cliente OAuth**
+7. Escolha "Aplicativo da Web".
+8. Em "URIs de redirecionamento autorizados", adicione: `http://localhost:3000/oauth2callback`
+9. Clique em **Criar**. Copie o seu **Client ID** e **Client Secret**.
 
 ---
 
 ## Passo 2 — Google Drive: Pasta de entrega
 
-1. Abra o [Google Drive](https://drive.google.com) **da professora**
+1. Abra o [Google Drive](https://drive.google.com)
 2. Crie uma pasta chamada **"Entregas de Trabalhos"**
-3. Clique com botão direito na pasta → **Compartilhar**
-4. Cole o e-mail do Service Account (parece com `xxxx@xxxx.iam.gserviceaccount.com`)
-5. Permissão: **Editor** → Confirmar
-6. Abra a pasta → copie o ID da URL: `drive.google.com/drive/folders/**ESSE_ID_AQUI**`
+3. Abra a pasta → copie o ID extraindo da URL: `drive.google.com/drive/folders/**ESSE_ID_AQUI**`
 
 ---
 
 ## Passo 3 — Google Sheets: Planilha de log
 
-1. Acesse [sheets.google.com](https://sheets.google.com) com a conta da professora
+1. Acesse [sheets.google.com](https://sheets.google.com)
 2. Crie uma nova planilha: **"Log de Entregas"**
 3. Renomeie a aba para `Submissões`
 4. Adicione estes cabeçalhos na linha 1:
    ```
    A1: Timestamp | B1: Nome | C1: Turma | D1: Título | E1: Email | F1: Link Drive | G1: File ID
    ```
-5. Compartilhe a planilha com o e-mail do Service Account (permissão **Editor**)
-6. Copie o ID da URL: `docs.google.com/spreadsheets/d/**ESSE_ID_AQUI**`
+5. Copie o ID da URL: `docs.google.com/spreadsheets/d/**ESSE_ID_AQUI**`/edit
 
 ---
 
@@ -55,110 +55,67 @@
 
 1. Acesse [myaccount.google.com/security](https://myaccount.google.com/security)
 2. Ative **Verificação em duas etapas** (se ainda não tiver)
-3. Pesquise "Senhas de app" → Gerar para **"Outro"** → nome: `Entregas`
-4. Copie a senha de 16 caracteres gerada
+3. Pesquise "Senhas de app" → Gerar para **E-mail**, dispositivo **"Outro"** → nome: `Site de Entregas Vercel`
+4. Copie a senha de 16 letras gerada (pode remover os espaços se quiser).
 
 ---
 
-## Passo 5 — Codificar credenciais em Base64
+## Passo 5 — Gerar o Refresh Token (OAuth2)
 
-No terminal (PowerShell ou cmd), execute:
+A aplicação precisa de um token permanente para fazer uploads em nome da conta Google.
 
-```powershell
-# Windows PowerShell
-$json = Get-Content "caminho\para\service-account.json" -Raw
-[Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($json))
-```
-
-Copie tudo que aparecer — esse é o valor de `GOOGLE_CREDENTIALS`.
+1. Faça cópia do `.env.example` para `.env` na raiz do projeto.
+2. Preencha o `GOOGLE_CLIENT_ID` e o `GOOGLE_CLIENT_SECRET` (do passo 1) no `.env`.
+3. No terminal do projeto no VS Code, rode:
+   ```bash
+   node get-token.js
+   ```
+4. O script gerará um link no terminal. Clique nele, faça login com a conta do Google que guardará os vídeos e autorize o app.
+5. O navegador tentará redirecionar para um link "localhost" avisando que não pode acessar. Isso é normal!
+6. Copie o códgio longo localizado na barra de endereço (a URL da página com erro), tudo que vier depois de `code=` e antes de `&scope`.
+7. Cole o código copiado de volta no terminal do VS Code e dê Enter.
+8. O script resgatará a autorização final e salvará o `GOOGLE_REFRESH_TOKEN` quase automaticamente no seu arquivo `.env`!
 
 ---
 
 ## Passo 6 — Deploy no Vercel
 
-### 6.1 — Instalar Vercel CLI
+O Vercel será as "costas" (backend + frontend) da aplicação.
 
-```bash
-npm install -g vercel
-```
-
-### 6.2 — Navegar até a pasta do projeto
-
-```bash
-cd "C:\Users\marci\Desktop\RobertaHomePage"
-npm install
-```
-
-### 6.3 — Fazer login no Vercel
-
-```bash
-vercel login
-```
-
-### 6.4 — Deploy
-
-```bash
-vercel --prod
-```
-
-Quando perguntar:
-- **Set up and deploy?** → `Y`
-- **Which scope?** → sua conta
-- **Link to existing project?** → `N`
-- **Project name?** → `entregas-portugues` (ou o que quiser)
-- **Directory?** → `./ ` (confirme com Enter)
-
-### 6.5 — Configurar variáveis de ambiente
-
-No painel do Vercel ([vercel.com](https://vercel.com)) → seu projeto → **Settings → Environment Variables**:
+1. Instale o CLI e faça login:
+   ```bash
+   npm install -g vercel
+   vercel login
+   ```
+2. Realize o deploy para produção (siga os passos do prompt com "Y"):
+   ```bash
+   vercel --prod
+   ```
+3. Registre as chaves na Vercel:
+   No painel web da [vercel.com](https://vercel.com) → selecione seu projeto → **Settings → Environment Variables**:
 
 | Nome | Valor |
 |---|---|
-| `GOOGLE_CREDENTIALS` | (string base64 do passo 5) |
+| `GOOGLE_CLIENT_ID` | (do passo 1) |
+| `GOOGLE_CLIENT_SECRET` | (do passo 1) |
+| `GOOGLE_REFRESH_TOKEN` | (gerado no passo 5) |
 | `DRIVE_FOLDER_ID` | ID da pasta do Drive |
 | `SHEET_ID` | ID da Google Sheet |
-| `GMAIL_USER` | email da professora |
-| `GMAIL_APP_PASSWORD` | senha de app de 16 dígitos |
-| `PROFESSOR_EMAIL` | email da professora (para notificações) |
-| `PROFESSOR_NAME` | Ex: `Professora Roberta` |
-| `ADMIN_PASSWORD` | senha forte para o painel |
+| `GMAIL_USER` | email remetente que envia mensagens |
+| `GMAIL_APP_PASSWORD` | senha de app de 16 caracteres (passo 4) |
+| `PROFESSOR_EMAIL` | email que vai receber cópia dos avisos |
+| `PROFESSOR_NAME` | Nome do Docente (ex: `Professora Roberta`) |
+| `ADMIN_PASSWORD` | senha super forte para visualizar tela /admin |
 
-### 6.6 — Re-deploy para aplicar variáveis
-
-```bash
-vercel --prod
-```
+*(Após inserir as variáveis, faça um **Redeploy** na dashboard de Deployments ou suba nova versão do código para as chaves entrarem em vigor na Vercel).*
 
 ---
 
-## Passo 7 — Testar
+## Passo 7 — Testes Finais e Acessos
 
-| O que testar | URL |
+| Dashboard | URL |
 |---|---|
-| Página do aluno | `https://seu-projeto.vercel.app/` |
-| Painel da professora | `https://seu-projeto.vercel.app/admin` |
+| Página de Envio pros Alunos | `https://seu-projeto.vercel.app/` |
+| Painel Admin Protegido | `https://seu-projeto.vercel.app/admin` |
 
----
-
-## URL personalizada (grátis)
-
-No painel Vercel → **Settings → Domains** → você pode alterar o subdomínio para algo como:
-`entrega-portugues.vercel.app` ✅
-
----
-
-## Testes locais (opcional)
-
-```bash
-# Crie o arquivo .env com base no .env.example
-cp .env.example .env
-# Edite o .env com seus valores reais
-
-# Instale Vercel CLI
-npm i -g vercel
-
-# Rode localmente
-vercel dev
-```
-
-Acesse: `http://localhost:3000`
+*(Lembre-se de configurar um Domínio Personalizado, se desejar, na aba Domains da Vercel!)*
