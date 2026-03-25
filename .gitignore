@@ -1,5 +1,7 @@
 # Credenciais e ambiente — NUNCA suba esses arquivos!
 .env
+.env.*
+!.env.example
 *.json.bak
 credentials_b64.txt
 service-account*.json
@@ -14,4 +16,3 @@ npm-debug.log*
 # OS
 .DS_Store
 Thumbs.db
-.env*.local
