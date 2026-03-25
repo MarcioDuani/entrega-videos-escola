@@ -22,19 +22,19 @@
 ## 🖥️ Fluxo do Aplicativo
 
 ### 1 — Formulário de entrega (tela inicial)
-![Formulário de entrega — campos de aluno e upload de vídeo](./docs/screenshots/formulario.png)
+![Formulário de entrega — campos de aluno e upload de vídeo](./docs/screenshots/formulario.jpg)
 
 ### 2 — Upload em progresso
-![Progresso do upload com barra de porcentagem em tempo real](./docs/screenshots/upload-progress.png)
+![Progresso do upload com barra de porcentagem em tempo real](./docs/screenshots/upload-progress.jpg)
 
 ### 3 — Confirmação de entrega
-![Tela de sucesso após envio do trabalho](./docs/screenshots/sucesso.png)
+![Tela de sucesso após envio do trabalho](./docs/screenshots/sucesso.jpg)
 
 ### 4 — Google Drive da Professora
-![Vídeos organizados na pasta "Entregas de Trabalhos" no Google Drive](./docs/screenshots/drive.png)
+![Vídeos organizados na pasta "Entregas de Trabalhos" no Google Drive](./docs/screenshots/drive.jpg)
 
 ### 5 — Log de Entregas (Google Sheets)
-![Planilha Google Sheets com log completo de cada entrega](./docs/screenshots/sheets.png)
+![Planilha Google Sheets com log completo de cada entrega](./docs/screenshots/sheets.jpg)
 
 ---
 
