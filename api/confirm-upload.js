@@ -20,18 +20,13 @@ module.exports = async function handler(req, res) {
             return res.status(400).json({ error: 'Dados incompletos.' });
         }
 
-        // Credenciais do Service Account para acesso ao Sheets
-        const credentials = JSON.parse(
-            Buffer.from(process.env.GOOGLE_CREDENTIALS, 'base64').toString('utf8')
+        // Configura credenciais OAuth2 para acesso ao Sheets
+        const auth = new google.auth.OAuth2(
+            process.env.GOOGLE_CLIENT_ID,
+            process.env.GOOGLE_CLIENT_SECRET,
+            'http://localhost:3000/oauth2callback'
         );
-
-        const auth = new google.auth.GoogleAuth({
-            credentials,
-            scopes: [
-                'https://www.googleapis.com/auth/spreadsheets',
-                'https://www.googleapis.com/auth/drive.readonly',
-            ],
-        });
+        auth.setCredentials({ refresh_token: process.env.GOOGLE_REFRESH_TOKEN });
 
         const sheets = google.sheets({ version: 'v4', auth });
 

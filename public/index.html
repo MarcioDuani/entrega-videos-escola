@@ -920,35 +920,44 @@
 
       // UI: uploading state
       submitBtn.disabled = true;
-      submitBtn.innerHTML = '<span class="spinner"></span>Preparando...';
+      submitBtn.innerHTML = '<span class="spinner"></span>Aguarde, enviando vídeo...';
       progressWrap.classList.add('visible');
       setProgress(5, 'Conectando ao servidor...', '');
 
       try {
-        // Step 1: Get Drive upload URL
+        // Passo 1: Obter URL de Upload Resumível do Google Drive via Servidor Seguro
         const urlRes = await fetch('/api/get-upload-url', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ filename: selectedFile.name, mimetype: selectedFile.type, studentName: nome, turma, titulo })
         });
-        if (!urlRes.ok) { const e = await urlRes.json(); throw new Error(e.error || 'Falha ao iniciar upload.'); }
-        const { uploadUrl } = await urlRes.json();
-        setProgress(10, 'Enviando vídeo...', 'Isso pode levar alguns minutos…');
+        
+        if (!urlRes.ok) { 
+          const e = await urlRes.json(); 
+          throw new Error(e.error || 'Falha ao iniciar upload seguro no Drive.'); 
+        }
+        
+        const { uploadUrl, accessToken } = await urlRes.json();
+        setProgress(10, 'Enviando vídeo...', 'Isso vai levar alguns minutos…');
 
-        // Step 2: Upload to Drive
+        // Passo 2: Upload direto para o Google Drive via PUT CORS
         submitBtn.innerHTML = '<span class="spinner"></span>Enviando vídeo...';
-        const fileId = await uploadToDrive(uploadUrl, selectedFile);
+        const fileId = await uploadToDrive(uploadUrl, selectedFile, accessToken);
 
         setProgress(95, 'Confirmando entrega...', 'Quase lá!');
         submitBtn.innerHTML = '<span class="spinner"></span>Finalizando...';
 
-        // Step 3: Confirm
+        // Passo 3: Confirmar e Salvar na Planilha Log
         const confRes = await fetch('/api/confirm-upload', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ fileId, studentName: nome, turma, titulo, email: emailVal })
         });
-        if (!confRes.ok) { const e = await confRes.json(); throw new Error(e.error || 'Falha na confirmação.'); }
+
+        if (!confRes.ok) { 
+          const e = await confRes.json(); 
+          throw new Error(e.error || 'Falha na confirmação do trabalho na planilha.'); 
+        }
 
         setProgress(100, 'Concluído!', '');
 
@@ -959,7 +968,7 @@
 
       } catch (err) {
         console.error(err);
-        alert('❌ Ocorreu um erro:\n' + err.message + '\n\nVerifique sua conexão e tente novamente.');
+        alert('❌ Ocorreu um erro:\n' + err.message + '\n\nTente enviar novamente.');
         submitBtn.disabled = false;
         submitBtn.innerHTML = 'Enviar Trabalho';
         progressWrap.classList.remove('visible');
@@ -972,8 +981,8 @@
       f.addEventListener('input', () => f.classList.remove('invalid'));
     });
 
-    // ── Drive resumable upload via XHR (for progress tracking)
-    function uploadToDrive(uploadUrl, file) {
+    // ── Drive resumable upload via XMLHttpRequest (to avoid Cross-Origin strictness on fetch)
+    function uploadToDrive(uploadUrl, file, accessToken) {
       return new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();
 
@@ -985,23 +994,28 @@
         };
 
         xhr.onload = () => {
-          if (xhr.status === 200 || xhr.status === 201) {
+          if (xhr.status === 200 || xhr.status === 201 || xhr.status === 308) {
             try {
               const data = JSON.parse(xhr.responseText);
               resolve(data.id);
             } catch {
-              reject(new Error('Resposta inesperada do servidor de upload.'));
+              reject(new Error('Resposta inesperada do servidor do Google.'));
             }
           } else {
-            reject(new Error('Upload falhou (status ' + xhr.status + ')'));
+            console.error("Drive err:", xhr.responseText);
+            reject(new Error('Google Drive recusou o arquivo (status ' + xhr.status + ')'));
           }
         };
 
-        xhr.onerror = () => reject(new Error('Erro de rede. Verifique sua conexão.'));
-        xhr.ontimeout = () => reject(new Error('Tempo esgotado. Tente com uma conexão mais estável.'));
+        xhr.onerror = () => reject(new Error('Erro de Conexão com o Google Drive. Verifique se seu navegador está bloqueando o acesso e tente novamente.'));
+        xhr.ontimeout = () => reject(new Error('Tempo esgotado. Tente com uma conexão mais rápida.'));
 
         xhr.open('PUT', uploadUrl);
-        xhr.setRequestHeader('Content-Type', file.type);
+        // Important: Set correct headers for the resumable session
+        xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+        if (accessToken) {
+          xhr.setRequestHeader('Authorization', 'Bearer ' + accessToken);
+        }
         xhr.send(file);
       });
     }

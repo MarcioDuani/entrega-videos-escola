@@ -29,22 +29,19 @@ module.exports = async function handler(req, res) {
         _warning: 'Credenciais do Google não configuradas. Configure GOOGLE_CREDENTIALS e SHEET_ID.',
     };
 
-    // ── Tenta buscar dados reais do Google Sheets
-    let credentials;
-    try {
-        credentials = JSON.parse(
-            Buffer.from(process.env.GOOGLE_CREDENTIALS, 'base64').toString('utf8')
-        );
-    } catch {
-        console.warn('[admin] GOOGLE_CREDENTIALS inválido ou não configurado. Retornando dados vazios.');
+    // ── Tenta buscar dados reais do Google Sheets usando OAuth2
+    if (!process.env.GOOGLE_REFRESH_TOKEN) {
+        console.warn('[admin] GOOGLE_REFRESH_TOKEN não configurado. Retornando dados vazios.');
         return res.status(200).json(emptyResponse);
     }
 
     try {
-        const auth = new google.auth.GoogleAuth({
-            credentials,
-            scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
-        });
+        const auth = new google.auth.OAuth2(
+            process.env.GOOGLE_CLIENT_ID,
+            process.env.GOOGLE_CLIENT_SECRET,
+            'http://localhost:3000/oauth2callback'
+        );
+        auth.setCredentials({ refresh_token: process.env.GOOGLE_REFRESH_TOKEN });
 
         const sheets = google.sheets({ version: 'v4', auth });
 
